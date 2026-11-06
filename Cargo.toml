@@ -1,0 +1,18 @@
+[package]
+name = "chemomer"
+version = "0.1.2"
+edition = "2021"
+description = "Native Rust InChI engine for Node — molfile in, identifier / AuxInfo / InChIKey out (the napi binding)"
+license = "MIT"
+repository = "https://github.com/chemomer/chemomer-ts"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# The engine, by its crate name, renamed: this crate is the `chemomer`
+# Node module, so the engine lands as `chemomer_engine` here.
+chemomer_engine = { package = "chemomer", git = "https://github.com/chemomer/chemomer" }
+napi = { version = "2", default-features = false, features = ["napi8"] }
+napi-derive = "2"
