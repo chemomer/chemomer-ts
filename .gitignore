@@ -4,3 +4,5 @@ index.js
 index.d.ts
 *.node
 node_modules/
+artifacts/
+npm/*/index.*.node

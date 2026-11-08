@@ -12,8 +12,19 @@ jobs:
       matrix:
         settings:
           - os: ubuntu-latest
+            binary: index.linux-x64-gnu.node
           - os: macos-latest
+            binary: index.darwin-arm64.node
+          # macos-13 is retired: darwin-x64 cross-compiles on the arm64
+          # runner (Apple's toolchain links across arches natively), so
+          # this leg proves the build and the artifact name; the binary
+          # itself cannot execute here.
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            binary: index.darwin-x64.node
+            cross: true
           - os: windows-latest
+            binary: index.win32-x64-msvc.node
     runs-on: ${{ matrix.settings.os }}
     steps:
       - uses: actions/checkout@v7
@@ -21,13 +32,25 @@ jobs:
         with:
           node-version: "22"
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.settings.target }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.settings.target }}
       - run: npm ci
       - run: npm run build:debug
       - run: node scripts/smoke-napi.mjs
+        if: ${{ !matrix.settings.cross }}
       # The release build proves the packaging configuration, not just
-      # the dev build.
+      # the dev build. The cross leg builds its target triple directly
+      # (the artifact the publish flow stages).
       - run: npm run build
+        if: ${{ !matrix.settings.cross }}
+      - run: npx napi build --platform --release --js false --target ${{ matrix.settings.target }}
+        if: ${{ matrix.settings.cross }}
+      - name: Verify the per-platform binary name
+        shell: bash
+        run: test -f "${{ matrix.settings.binary }}" || { ls -la; exit 1; }
 
   lint:
     # Clippy on the wrapper only — the engine arrives as a compiled

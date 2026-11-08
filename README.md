@@ -25,19 +25,43 @@ npm run build:debug
 node scripts/smoke-napi.mjs
 ```
 
+## Packaging
+
+The standard napi-rs multi-platform shape: the `chemomer` package
+ships the JS loader (`index.js` + `index.d.ts`) and pulls its native
+binary through `optionalDependencies` from the per-platform packages
+`chemomer-darwin-arm64`, `chemomer-darwin-x64`,
+`chemomer-linux-x64-gnu`, `chemomer-win32-x64-msvc`. The generated
+loader prefers a local `index.<platform>.node` in a dev tree and falls
+back to the platform package when installed — the same file serves
+both. Platform package manifests live in `npm/<triple>/`
+(`npm run create-npm-dirs` regenerates them); binaries are staged into
+those dirs by `npm run artifacts` and are never committed.
+
+The smoke test has a layout mode that verifies the
+optionalDependencies resolution directly:
+
+```bash
+npm run create-npm-dirs
+npm run build
+cp index.<platform>.node npm/<triple>/   # or: npm run artifacts
+npm install --no-save ./npm/<triple>
+node scripts/smoke-napi.mjs --layout
+```
+
 ## Publishing
 
 `npm.yml` is dispatch-only and doubly gated (`publish` input + the npm
-trusted-publisher registration for package `chemomer` with repository
-`chemomer/chemomer-ts`, workflow `npm.yml`, no environment) — the
-publish credential is the job's OIDC token; no stored secrets. The
-publish step runs WITHOUT a `registry-url` on setup-node on purpose:
-a token line would make npm PUT with an empty credential instead of
-the OIDC identity (registry 404).
+trusted-publisher registrations with repository `chemomer/chemomer-ts`,
+workflow `npm.yml`, no environment) — the publish credential is the
+job's OIDC token; no stored secrets. The parsanol pattern applies:
+setup-node keeps its `registry-url` while the publish steps set
+`NODE_AUTH_TOKEN` to the empty string, so npm engages OIDC provenance
+instead of token auth.
 
-The per-platform package split (`@chemomer/<platform>` optional
-dependencies) is a deferred follow-up; until then the package ships
-the dispatcher's platform binary only.
+Five packages need registrations: `chemomer` (main) plus the four
+platform packages. Platform packages publish FIRST, the main package
+LAST — its optionalDependencies pin them at the same version.
 
 ## License
 
