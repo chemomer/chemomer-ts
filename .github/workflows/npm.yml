@@ -1,25 +1,9 @@
-# The npm publish path (the napi binding moved here from the engine
-# repo) — build, test, and the gated multi-platform publish.
-#
-# Dispatch-only: nothing runs on push or PR. A bare dispatch builds and
-# smoke-tests the four platform binaries. Publishing is doubly gated —
-# an explicit `publish` dispatch input AND the npm trusted-publisher
-# registrations (until they exist, the publish step fails at the
-# registry with no upload).
-#
-# TRUSTED PUBLISHING — five registrations required, each with
-# repository chemomer/chemomer-ts, workflow npm.yml, NO environment:
-#
-#   chemomer                  main package   (registered; proven green)
-#   chemomer-darwin-arm64     platform package
-#   chemomer-darwin-x64       platform package
-#   chemomer-linux-x64-gnu    platform package
-#   chemomer-win32-x64-msvc   platform package
-#
-# The publish job below intentionally declares NO `environment:` key —
-# the OIDC claims must match the registrations exactly. Platform
-# packages publish FIRST, the main package LAST: its
-# optionalDependencies pin the platform packages at the same version.
+# The npm publish path (the wasm build) — build, test, and the gated
+# publish. Trusted publishing: package "chemomer" is registered with
+# repository chemomer/chemomer-ts, workflow npm.yml, no environment.
+# The parsanol pattern: registry-url STAYS (npm binds the OIDC publish
+# to the configured registry host) and the token env is EXPLICITLY
+# EMPTY so npm skips token auth and engages OIDC provenance instead.
 
 name: npm
 
@@ -27,12 +11,12 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publish to npm after the build+test matrix passes"
+        description: "Publish to npm after the build passes"
         required: false
         default: false
         type: boolean
       version:
-        description: "Version to publish (must match package.json; required when publish=true)"
+        description: "Version to publish (must match Cargo.toml; required when publish=true)"
         required: false
         type: string
 
@@ -41,25 +25,7 @@ permissions:
 
 jobs:
   build-test:
-    strategy:
-      fail-fast: false
-      matrix:
-        settings:
-          - os: ubuntu-latest
-            binary: index.linux-x64-gnu.node
-          - os: macos-latest
-            binary: index.darwin-arm64.node
-          # macos-13 is retired: darwin-x64 cross-compiles on the arm64
-          # runner (Apple's toolchain links across arches natively), so
-          # this leg proves the build and the artifact name; the binary
-          # itself cannot execute here.
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            binary: index.darwin-x64.node
-            cross: true
-          - os: windows-latest
-            binary: index.win32-x64-msvc.node
-    runs-on: ${{ matrix.settings.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
@@ -67,34 +33,17 @@ jobs:
           node-version: "22"
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.settings.target }}
+          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
+      - uses: jetli/wasm-pack-action@v0.4.0
         with:
-          key: ${{ matrix.settings.target }}
-      - run: npm ci
-      - run: npm run build:debug
-      - run: node scripts/smoke-napi.mjs
-        if: ${{ !matrix.settings.cross }}
-      # The release build proves the packaging configuration, not just
-      # the dev build. The cross leg builds its target triple directly
-      # (the artifact the publish flow stages).
-      - run: npm run build
-        if: ${{ !matrix.settings.cross }}
-      - run: npx napi build --platform --release --js false --target ${{ matrix.settings.target }}
-        if: ${{ matrix.settings.cross }}
-      - name: Verify the per-platform binary name
-        shell: bash
-        run: test -f "${{ matrix.settings.binary }}" || { ls -la; exit 1; }
-      - name: Stage the release binary for the publish job
-        uses: actions/upload-artifact@v4
-        with:
-          name: bindings-${{ matrix.settings.binary }}
-          path: ${{ matrix.settings.binary }}
-          if-no-files-found: error
+          version: latest
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: wasm-pack build --target nodejs --out-dir pkg
+      - run: node scripts/smoke-wasm.mjs
 
   publish:
-    # Platform packages first, main package last — the main package's
-    # optionalDependencies point at the platform packages.
     if: inputs.publish
     needs: build-test
     runs-on: ubuntu-latest
@@ -109,52 +58,29 @@ jobs:
           persist-credentials: false
       - name: Verify version matches input
         run: |
-          actual=$(node -p "require('./package.json').version")
+          actual=$(grep -m1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
           if [ "$actual" != "${{ inputs.version }}" ]; then
-            echo "Version mismatch: input=${{ inputs.version }}, package.json=$actual"
+            echo "Version mismatch: input=${{ inputs.version }}, Cargo.toml=$actual"
             exit 1
           fi
           echo "Publishing $actual"
-      # The parsanol pattern: registry-url STAYS (npm binds the OIDC
-      # publish to the configured registry host) with the token env
-      # EXPLICITLY EMPTY — the empty ${NODE_AUTH_TOKEN} in .npmrc makes
-      # npm skip token auth and engage OIDC provenance instead.
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          # The parsanol pattern: the registry host must be configured
+          # for the OIDC publish to bind to it.
           registry-url: https://registry.npmjs.org
       - run: npm install -g npm@latest
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: npm ci
-      # Regenerate the universal loader (index.js/index.d.ts are build
-      # outputs, not committed).
-      - run: npm run build
-      - uses: actions/download-artifact@v4
         with:
-          path: artifacts
-      - run: npm run create-npm-dirs
-      # Moves each downloaded binary into npm/<triple>/ (and the tree
-      # root) by its index.<platform>.node name.
-      - run: npm run artifacts
-      - name: Verify every platform package carries its binary
+          targets: wasm32-unknown-unknown
+      - uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+      - run: wasm-pack build --target nodejs --out-dir pkg
+      - name: Publish with provenance
         run: |
-          for dir in darwin-arm64 darwin-x64 linux-x64-gnu win32-x64-msvc; do
-            test -f "npm/${dir}/index.${dir}.node" || { echo "missing binary: npm/${dir}"; ls -R npm artifacts; exit 1; }
-          done
-      - name: Prove the optionalDependencies resolution (linux platform package)
-        run: |
-          npm install --no-save ./npm/linux-x64-gnu
-          node scripts/smoke-napi.mjs --layout
-      - name: Publish the platform packages
-        run: |
-          npm publish --access public --provenance npm/darwin-arm64
-          npm publish --access public --provenance npm/darwin-x64
-          npm publish --access public --provenance npm/linux-x64-gnu
-          npm publish --access public --provenance npm/win32-x64-msvc
-        env:
-          NODE_AUTH_TOKEN: "" # explicit: trusted publishing only, no token
-      - name: Publish the main package
-        run: npm publish --access public --provenance
+          cd pkg
+          npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: "" # explicit: trusted publishing only, no token
