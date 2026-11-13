@@ -17,15 +17,15 @@ checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 [[package]]
 name = "chemomer"
 version = "1.0.0"
-dependencies = [
- "chemomer 1.0.0 (git+https://github.com/chemomer/chemomer)",
- "wasm-bindgen",
-]
+source = "git+https://github.com/chemomer/chemomer#b0c2462aff47f303c177ddf40f56b849b43efb9b"
 
 [[package]]
 name = "chemomer"
-version = "1.0.0"
-source = "git+https://github.com/chemomer/chemomer#b0c2462aff47f303c177ddf40f56b849b43efb9b"
+version = "1.0.1"
+dependencies = [
+ "chemomer 1.0.0",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "proc-macro2"
