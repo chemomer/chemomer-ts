@@ -16,16 +16,16 @@ checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
 name = "chemomer"
-version = "0.1.0"
-source = "git+https://github.com/chemomer/chemomer#2dc70c5a65e0a032804f7f6978376b5daeec0893"
+version = "0.1.3"
+dependencies = [
+ "chemomer 1.0.0",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "chemomer"
-version = "0.1.3"
-dependencies = [
- "chemomer 0.1.0",
- "wasm-bindgen",
-]
+version = "1.0.0"
+source = "git+https://github.com/chemomer/chemomer#b0c2462aff47f303c177ddf40f56b849b43efb9b"
 
 [[package]]
 name = "proc-macro2"
@@ -53,9 +53,9 @@ checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
 name = "syn"
-version = "3.0.9"
+version = "3.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d78c8dee4c7bf0e14673097256fed6142ce9d3b85a408189d07482442145823b"
+checksum = "4ae9ccbea3a7b0b09443036490c8f34a8b1b760fd345e5c0dae0aac718faea79"
 dependencies = [
  "proc-macro2",
  "quote",
