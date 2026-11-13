@@ -27,7 +27,7 @@ jobs:
           version: latest
       - run: cargo fmt --check
       - run: cargo clippy --locked --all-targets -- -D warnings
-      - run: wasm-pack build --target nodejs --out-dir pkg
+      - run: wasm-pack build --release --target nodejs --out-dir pkg
       - run: node scripts/smoke-wasm.mjs
       # The wasm transport, gated by the oracle: every identity
       # fixture's molfile through the built module, byte-compared
