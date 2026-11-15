@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { from_molfile, aux_from_molfile, inchikey } from "../pkg/chemomer.js";
 
-const ENGINE_SEMVER = "1.1.0";
+const ENGINE_SEMVER = "1.1.1";
 
 const WATER = [
   "water",
