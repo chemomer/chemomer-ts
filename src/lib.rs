@@ -9,7 +9,6 @@
 //! dependency, renamed `chemomer_engine` because this crate is the
 //! `chemomer` module); this crate owns only the wasm-bindgen surface.
 
-use chemomer_engine::rinchi::Directionality;
 use chemomer_engine::Engine;
 use wasm_bindgen::prelude::*;
 
