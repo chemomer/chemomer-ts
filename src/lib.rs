@@ -10,6 +10,7 @@
 //! `chemomer` module); this crate owns only the wasm-bindgen surface.
 
 use chemomer_engine::Engine;
+use chemomer_engine::rinchi::Directionality;
 use wasm_bindgen::prelude::*;
 
 /// Derives the identifier from a V2000 molfile.
@@ -98,5 +99,37 @@ pub fn rinchi_from_rd(rdfile: &str) -> Result<String, JsValue> {
 pub fn rinchi_decode(rinchi: &str, rauxinfo: &str) -> Result<String, JsValue> {
     chemomer_engine::rinchi::reaction_from_rinchi_with_auxinfo(rinchi, rauxinfo)
         .and_then(|reaction| reaction.component_table())
+        .map_err(|error| JsValue::from_str(error.message()))
+}
+
+/// Derives the five-line RInChI identity record from a V2000 RXNfile
+/// in one call, newline-separated in the oracle-fixture order
+/// (`rinchi`, `rauxinfo`, `rinchikey`, `longKey`, `webKey`), with the
+/// equilibrium option: `forceEquilibrium` derives the `/d` form and
+/// the equilibrium key shapes exactly as the oracle corpus's
+/// `forceEquilibrium` cases record (chemomer#120).
+#[wasm_bindgen]
+pub fn rinchi_record_from_rxn(rxnfile: &str, force_equilibrium: bool) -> Result<String, JsValue> {
+    let mut reaction = chemomer_engine::parse_rxnfile(rxnfile)
+        .map_err(|error| JsValue::from_str(error.message()))?;
+    if force_equilibrium {
+        reaction.set_directionality(chemomer_engine::rinchi::Directionality::Equilibrium);
+    }
+    Ok([
+        reaction.rinchi_string().map_err(|error| JsValue::from_str(error.message()))?,
+        reaction.rinchi_auxinfo().map_err(|error| JsValue::from_str(error.message()))?,
+        reaction.rinchi_short_key().map_err(|error| JsValue::from_str(error.message()))?,
+        reaction.rinchi_long_key().map_err(|error| JsValue::from_str(error.message()))?,
+        reaction.rinchi_web_key().map_err(|error| JsValue::from_str(error.message()))?,
+    ]
+    .join("\n"))
+}
+
+/// Reads a day-1 SMILES string and derives the identifier — the local
+/// SMILES ingest edge (the `smiles.parg` contract; chemomer#121).
+#[wasm_bindgen]
+pub fn from_smiles(smiles: &str) -> Result<String, JsValue> {
+    Engine::from_smiles(smiles)
+        .and_then(|engine| engine.inchi_string())
         .map_err(|error| JsValue::from_str(error.message()))
 }
