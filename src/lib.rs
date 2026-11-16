@@ -9,8 +9,8 @@
 //! dependency, renamed `chemomer_engine` because this crate is the
 //! `chemomer` module); this crate owns only the wasm-bindgen surface.
 
-use chemomer_engine::Engine;
 use chemomer_engine::rinchi::Directionality;
+use chemomer_engine::Engine;
 use wasm_bindgen::prelude::*;
 
 /// Derives the identifier from a V2000 molfile.
@@ -116,11 +116,21 @@ pub fn rinchi_record_from_rxn(rxnfile: &str, force_equilibrium: bool) -> Result<
         reaction.set_directionality(chemomer_engine::rinchi::Directionality::Equilibrium);
     }
     Ok([
-        reaction.rinchi_string().map_err(|error| JsValue::from_str(error.message()))?,
-        reaction.rinchi_auxinfo().map_err(|error| JsValue::from_str(error.message()))?,
-        reaction.rinchi_short_key().map_err(|error| JsValue::from_str(error.message()))?,
-        reaction.rinchi_long_key().map_err(|error| JsValue::from_str(error.message()))?,
-        reaction.rinchi_web_key().map_err(|error| JsValue::from_str(error.message()))?,
+        reaction
+            .rinchi_string()
+            .map_err(|error| JsValue::from_str(error.message()))?,
+        reaction
+            .rinchi_auxinfo()
+            .map_err(|error| JsValue::from_str(error.message()))?,
+        reaction
+            .rinchi_short_key()
+            .map_err(|error| JsValue::from_str(error.message()))?,
+        reaction
+            .rinchi_long_key()
+            .map_err(|error| JsValue::from_str(error.message()))?,
+        reaction
+            .rinchi_web_key()
+            .map_err(|error| JsValue::from_str(error.message()))?,
     ]
     .join("\n"))
 }
