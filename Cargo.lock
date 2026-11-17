@@ -53,16 +53,16 @@ checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
 name = "chemomer"
-version = "1.1.4"
+version = "1.1.5"
 dependencies = [
- "chemomer 1.1.4 (git+https://github.com/chemomer/chemomer?tag=v1.1.4)",
+ "chemomer 1.1.5 (git+https://github.com/chemomer/chemomer?tag=v1.1.5)",
  "wasm-bindgen",
 ]
 
 [[package]]
 name = "chemomer"
-version = "1.1.4"
-source = "git+https://github.com/chemomer/chemomer?tag=v1.1.4#83ddfaf0e308bac3892830c69e2b2b2ea0f288c4"
+version = "1.1.5"
+source = "git+https://github.com/chemomer/chemomer?tag=v1.1.5#6e9a6b17c8be42ba0a6512d28b861db17af8ce06"
 dependencies = [
  "parsanol",
 ]
