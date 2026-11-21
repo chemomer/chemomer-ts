@@ -12,7 +12,7 @@ import {
   from_smiles,
 } from "../pkg/chemomer.js";
 
-const ENGINE_SEMVER = "1.1.8";
+const ENGINE_SEMVER = "1.1.10";
 
 const WATER = [
   "water",
